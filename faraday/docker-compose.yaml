@@ -1,0 +1,52 @@
+version: '3.8'
+services:
+  # db
+  faraday-db:
+    image: postgres:12.7-alpine
+    restart: always
+    container_name: faraday_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=faraday
+    # ports:
+    #   - '5432'
+    volumes:
+      - "./db:/var/lib/postgresql/data:rw"
+    networks:
+      - faraday-net
+
+  # redis
+  faraday-redis:
+    image: 'redis:6.2-alpine'
+    container_name: faraday_redis
+    # ports:
+    #   - '6379'
+    networks:
+      - faraday-net
+
+  # app
+  faraday:
+    image: index.docker.io/faradaysec/faraday
+    restart: always
+    container_name: faraday_app
+    entrypoint: "/entrypoint.sh"
+    volumes:
+     - "./.faraday:/home/faraday/.faraday:rw"
+    environment:
+      - PGSQL_USER=postgres
+      - PGSQL_PASSWD=postgres
+      - PGSQL_HOST=faraday-db
+      - PGSQL_DBNAME=faraday
+      - REDIS_SERVER=faraday-redis
+    depends_on:
+     - faraday-db
+     - faraday-redis
+    ports:
+     - "5985:5985"
+    networks:
+      - faraday-net
+
+networks:
+  faraday-net:
+    driver: bridge 
