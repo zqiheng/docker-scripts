@@ -1,0 +1,15 @@
+# portainer 服务，用于可视化页面管理 Docker 容器
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    ports:
+      - 8000:8000
+      - 9000:9000
+      - 9443:9443
+    volumes:
+      - ./data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      # 中文汉化包路径，参考：https://blog.csdn.net/qq_41322460/article/details/132301348
+      - ./public-public:/public
+    restart: always
