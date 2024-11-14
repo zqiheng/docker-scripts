@@ -20,8 +20,8 @@ services:
       - '/mnt/sonarqube/data:/opt/sonarqube/data'
       - '/mnt/sonarqube/logs:/opt/sonarqube/logs'
       - '/mnt/sonarqube/extensions:/opt/sonarqube/extensions'
-      - '/mnt/sonarqube/lib/bundled-plugins-plugins:/opt/sonarqube/lib/bundled-plugins'
-      - '/opt/sonarqube/sonarqube-community-branch-plugin-1.14.0.jar:/opt/sonarqube/extensions/plugins/sonarqube-community-branch-plugin.jar'
+      # 插件存放目录，后续插件升级可直接放在此目录下后挂载进去
+      - '/opt/sonarqube/plugins:/opt/sonarqube/extensions/plugins'
   # sonar db
   sonar-db:
     image: postgres:15.4
