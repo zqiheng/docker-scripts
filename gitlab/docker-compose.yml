@@ -1,19 +1,28 @@
-version: "3.0"
-
-services: 
-  gitlab: 
-    image: gitlab/gitlab-ce
-    container_name: gitlab
+# GitLab Server
+services:
+  # gitlab 服务
+  gitlab:
+    image: gitlab/gitlab-ce:17.5.2-ce.0
+    container_name: gitlab-ce
     restart: always
     environment:
+      TZ: 'Asia/Shanghai'
       GITLAB_OMNIBUS_CONFIG: |
-        external_url 'http://localhost:8929'
+        external_url 'http://10.10.50.200:30080'
         gitlab_rails['gitlab_shell_ssh_port'] = 22
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G
+        reservations:
+          memory: 6G
     ports:
-      - '8929:8929'
-      - '2224:22'
+      - '30080:30080'
+      - '30022:22'
+      - '30443:443'
     volumes:
-      - './config:/etc/gitlab'
-      - './logs:/var/log/gitlab'
-      - './data:/var/opt/gitlab'
+      - '/mnt/gitlab/config:/etc/gitlab'
+      - '/mnt/gitlab/logs:/var/log/gitlab'
+      - '/mnt/gitlab/data:/var/opt/gitlab'
     
