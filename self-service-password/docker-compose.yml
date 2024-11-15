@@ -1,0 +1,72 @@
+services:
+  self-service-password:
+    image: tiredofit/self-service-password:latest
+    container_name: self-service-password
+    ports:
+      - 8888:80
+    # 挂载
+    volumes:
+      - ./data:/www/ssp
+      - ./logs:/www/logs
+    environment:
+      #==============================================
+      # ldap地址
+      - LDAP_SERVER=ldap://172.16.107.101:389
+      # 管理员账户
+      - LDAP_BINDDN=cn=admin,dc=eric,dc=com
+      # 管理员密码
+      - LDAP_BINDPASS=123456
+      # 搜索用户的基础路径
+      - LDAP_BASE_SEARCH=ou=Persons,dc=eric,dc=com
+      #==============================================
+      ## Mail
+      - LDAP_MAIL_ATTRIBUTE=mail
+      # 修改密码的邮件通知来源地址
+      - MAIL_FROM=eric.zqi@qq.com
+      # PHPMailer 邮箱的发件服务器地址(see https://github.com/PHPMailer/PHPMailer)
+      - SMTP_DEBUG=0
+      - SMTP_HOST=smtp.qq.com
+      - SMTP_AUTH_ON=true # 是否通过邮箱地址和密码做身份验证
+      - SMTP_USER=eric.zqi@qq.com # 邮箱地址
+      - SMTP_PASS=xvzuvmncioyzhbih # 邮箱授权码
+      - SMTP_PORT=465  # 邮箱的发件服务器端口
+      - SMTP_SECURE_TYPE=ssl #  SMTP安全类型
+      - SMTP_AUTOTLS=false
+      # Notify users anytime their password is changed.
+      - NOTIFY_ON_CHANGE=true
+      #==============================================
+      # Password 配置
+      - SAMBA_MODE=false
+      # 密码最小长度
+      - PASSWORD_MIN_LENGTH=8
+      # 密码最大长度
+      - PASSWORD_MAX_LENGTH=30
+      # 密码中最少的小写字符个数
+      - PASSWORD_MIN_LOWERCASE=2
+      # 密码中最少的大写字符个数
+      - PASSWORD_MIN_UPPERCASE=2
+      # 密码中最少的数字个数
+      - PASSWORD_MIN_DIGIT=2
+      # 密码中最少的特殊字符个数
+      - PASSWORD_MIN_SPECIAL=2
+      # 不要重复使用与当前相同的密码
+      - PASSWORD_NO_REUSE=true
+      # 密码开头和结尾不允许使用特殊字符
+      - PASSWORD_NO_SPECIAL_ENDS=false
+      # 定义特殊字符
+      - PASSWORD_SPECIAL_CHARACTERS=^a-zA-Z0-9
+      - PASSWORD_DIFFERENT_LOGIN=true
+      # 何时显示密码策略信息
+      - PASSWORD_SHOW_POLICY=onerror
+      - PASSWORD_SHOW_POLICY_POSITION=above
+      - WHO_CAN_CHANGE_PASSWORD=manager # 指定谁来修改密码
+      # Hash mechanism for password:
+      # SSHA
+      # SHA
+      # SMD5
+      # MD5
+      # CRYPT
+      # clear (the default)
+      # auto (will check the hash of current password)
+      # This option is not used with ad_mode = true
+      - PASSWORD_HASH=SHA256 # 密码hash类型
