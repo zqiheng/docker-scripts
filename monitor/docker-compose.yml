@@ -1,0 +1,79 @@
+services:
+  # prometheus
+  prometheus:
+    # Docker Hub 镜像
+    image: prom/prometheus:v2.53.3
+    # 容器名称
+    container_name: prometheus
+    hostname: prometheus
+    restart: always
+    ports:
+      - '29090:9090'
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 16G
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      # 配置文件
+      - './prometheus/prometheus.yml:/prometheus/prometheus.yml'
+      - './prometheus/rules:/prometheus/rules'
+      # 数据挂载
+      - '/mnt/monitor/prometheus/data:/prometheus/data'
+    # 指定容器中的配置文件
+    command:
+      - '--config.file=/prometheus/prometheus.yml'
+      # 支持热更新
+      - '--web.enable-lifecycle'
+      # 保留30天的数据（默认保留15天的数据）
+      - '--storage.tsdb.retention.time=30d'
+
+  # 添加告警模块
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    hostname: alertmanager
+    restart: always
+    ports:
+      - '29093:9093'
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 6G
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      # 配置文件
+      - './alertmanager/alertmanager.yml:/alertmanager/alertmanager.yml'
+      - './alertmanager/template:/alertmanager/template'
+      # 数据挂载
+      - '/mnt/monitor/alertmanager/data:/alertmanager/data'
+    command:
+      - '--config.file=/alertmanager/alertmanager.yml'
+
+  # 添加监控可视化面板
+  grafana:
+    image: grafana/grafana:11.3.0-security-01
+    container_name: grafana
+    hostname: grafana
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel
+    ports:
+      - '23000:3000'
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+    volumes:
+      # 配置文件
+      - './grafana/grafana.ini:/etc/grafana/grafana.ini'
+      # 数据挂载
+      - '/mnt/monitor/grafana/data:/var/lib/grafana'
+      - '/mnt/monitor/grafana/log:/var/log/grafana'

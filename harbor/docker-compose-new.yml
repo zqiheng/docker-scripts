@@ -3,13 +3,6 @@ services:
     image: goharbor/harbor-log:v2.12.0
     container_name: harbor-log
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 8G
-    environment:
-      - TZ=Asia/Shanghai
     cap_drop:
       - ALL
     cap_add:
@@ -26,20 +19,13 @@ services:
         source: ./common/config/log/rsyslog_docker.conf
         target: /etc/rsyslog.d/rsyslog_docker.conf
     ports:
-      - 127.0.0.1:30514:10514
+      - 127.0.0.1:1514:10514
     networks:
       - harbor
   registry:
     image: goharbor/registry-photon:v2.12.0
-    container_name: harbor-registry
+    container_name: registry
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 8G
-    environment:
-      - TZ=Asia/Shanghai
     cap_drop:
       - ALL
     cap_add:
@@ -62,21 +48,14 @@ services:
     logging:
       driver: "syslog"
       options:
-        syslog-address: "tcp://localhost:30514"
+        syslog-address: "tcp://localhost:1514"
         tag: "registry"
   registryctl:
     image: goharbor/harbor-registryctl:v2.12.0
-    container_name: harbor-registryctl
+    container_name: registryctl
     env_file:
       - ./common/config/registryctl/env
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 8G
-    environment:
-      - TZ=Asia/Shanghai
     cap_drop:
       - ALL
     cap_add:
@@ -99,19 +78,12 @@ services:
     logging:
       driver: "syslog"
       options:
-        syslog-address: "tcp://localhost:30514"
+        syslog-address: "tcp://localhost:1514"
         tag: "registryctl"
   postgresql:
     image: goharbor/harbor-db:v2.12.0
     container_name: harbor-db
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 8G
-    environment:
-      - TZ=Asia/Shanghai
     cap_drop:
       - ALL
     cap_add:
@@ -130,7 +102,7 @@ services:
     logging:
       driver: "syslog"
       options:
-        syslog-address: "tcp://localhost:30514"
+        syslog-address: "tcp://localhost:1514"
         tag: "postgresql"
     shm_size: '1gb'
   core:
@@ -139,13 +111,6 @@ services:
     env_file:
       - ./common/config/core/env
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 16G
-    environment:
-      - TZ=Asia/Shanghai
     cap_drop:
       - ALL
     cap_add:
@@ -177,19 +142,12 @@ services:
     logging:
       driver: "syslog"
       options:
-        syslog-address: "tcp://localhost:30514"
+        syslog-address: "tcp://localhost:1514"
         tag: "core"
   portal:
     image: goharbor/harbor-portal:v2.12.0
     container_name: harbor-portal
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 16G
-    environment:
-      - TZ=Asia/Shanghai
     cap_drop:
       - ALL
     cap_add:
@@ -208,7 +166,7 @@ services:
     logging:
       driver: "syslog"
       options:
-        syslog-address: "tcp://localhost:30514"
+        syslog-address: "tcp://localhost:1514"
         tag: "portal"
 
   jobservice:
@@ -217,13 +175,6 @@ services:
     env_file:
       - ./common/config/jobservice/env
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 8G
-    environment:
-      - TZ=Asia/Shanghai
     cap_drop:
       - ALL
     cap_add:
@@ -245,19 +196,12 @@ services:
     logging:
       driver: "syslog"
       options:
-        syslog-address: "tcp://localhost:30514"
+        syslog-address: "tcp://localhost:1514"
         tag: "jobservice"
   redis:
     image: goharbor/redis-photon:v2.12.0
-    container_name: harbor-redis
+    container_name: redis
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 8G
-    environment:
-      - TZ=Asia/Shanghai
     cap_drop:
       - ALL
     cap_add:
@@ -273,19 +217,12 @@ services:
     logging:
       driver: "syslog"
       options:
-        syslog-address: "tcp://localhost:30514"
+        syslog-address: "tcp://localhost:1514"
         tag: "redis"
   proxy:
     image: goharbor/nginx-photon:v2.12.0
-    container_name: harbor-nginx
+    container_name: nginx
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 8G
-    environment:
-      - TZ=Asia/Shanghai
     cap_drop:
       - ALL
     cap_add:
@@ -302,7 +239,7 @@ services:
       - harbor
     ports:
       - 38080:8080
-      - 39090:9090
+      - 9090:9090
     depends_on:
       - registry
       - core
@@ -311,7 +248,7 @@ services:
     logging:
       driver: "syslog"
       options:
-        syslog-address: "tcp://localhost:30514"
+        syslog-address: "tcp://localhost:1514"
         tag: "proxy"
   exporter:
     image: goharbor/harbor-exporter:v2.12.0
@@ -319,13 +256,6 @@ services:
     env_file:
       - ./common/config/exporter/env
     restart: always
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 8G
-    environment:
-      - TZ=Asia/Shanghai
     networks:
       - harbor
     depends_on:
@@ -338,9 +268,8 @@ services:
     logging:
       driver: "syslog"
       options:
-        syslog-address: "tcp://localhost:30514"
+        syslog-address: "tcp://localhost:1514"
         tag: "exporter"
-
 networks:
   harbor:
     external: false

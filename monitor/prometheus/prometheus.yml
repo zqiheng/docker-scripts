@@ -1,0 +1,26 @@
+# 全局配置 （如果有内部单独设定，会覆盖这个参数）
+global:
+  # 数据采集间隔
+  scrape_interval:     45s
+  # 告警检测间隔
+  evaluation_interval: 45s
+
+# 告警规则。 按照设定参数进行扫描加载，用于自定义报警规则，其报警媒介和route路由由alertmanager插件实现
+rule_files:
+  # 这里匹配指定目录下所有的.rules文件
+  - /prometheus/rules/*.rules
+  - /prometheus/rules/*.yml
+
+# alertmanager 配置
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: [ '10.10.50.200:29093' ]
+
+# 采集配置。配置数据源，包含分组job_name以及具体target。又分为静态配置和服务发现
+scrape_configs:
+  # 采集项(prometheus)
+  - job_name: 'prometheus'
+    static_configs:
+      # prometheus自带了对自身的exporter监控程序，所以不需额外安装exporter就可配置采集项
+      - targets: ['localhost:9090']

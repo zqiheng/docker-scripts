@@ -7,6 +7,7 @@ services:
       - '29001:9001'
     restart: always
     environment:
+      - TZ=Asia/Shanghai
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD}
     volumes:

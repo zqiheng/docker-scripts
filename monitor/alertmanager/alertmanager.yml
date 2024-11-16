@@ -1,0 +1,66 @@
+global:
+  resolve_timeout: 5m
+  # 发件人
+  smtp_from: 'devops@fa-software.com'
+  # 邮箱服务器的 SMTP 主机配置
+  smtp_smarthost: 'smtp.qiye.aliyun.com:465'
+  # 用户名
+  smtp_auth_username: 'devops@fa-software.com'
+  # 授权码
+  smtp_auth_password: '6nret6SWkoWyljrX'
+  smtp_require_tls: false
+
+templates:
+  # 指定预警内容模板，此路径为Docker容器中的配置文件路径，需提前在volumes挂载
+  - '/alertmanager/template/*.tmpl'
+
+route:
+  # 指定通过什么字段进行告警分组(如：alertname=A 和 alertname=B 的将会被分导两个组里面)
+  group_by: ['alertname']
+  # 在组内等待所配置的时间，如果同组内，5 秒内出现相同报警，在一个组内出现
+  group_wait: 5s
+  # 如果组内内容不变化，合并为一条警报信息，5 分钟后发送
+  group_interval: 5m
+  # 发送告警间隔时间 s/m/h，如果指定时间内没有修复，则重新发送告警
+  repeat_interval: 5m
+  # 默认的receiver。 如果一个报警没有被任何一个route匹配，则发送给默认的接收器
+  receiver: 'admin'
+
+  #子路由(上面所有的route属性都由所有子路由继承，并且可以在每个子路由上进行覆盖)
+  routes:
+    # 当触发当前预警的prometheus规则满足：标签alarmClassify的为normal时（标签名、标签值可以自定义，只要和编写的prometheus的rule里面设置的标签呼应上即可），往mes812发送邮件
+    - receiver: mes812
+      match_re:
+        alarmClassify: normal
+
+    # 当触发当前预警的prometheus规则满足：标签alarmClassify的值为special时（标签名、标签值可以自定义，只要和编写的prometheus的rule里面设置的标签呼应上即可），往admin发送邮件
+    - receiver: admin
+      match_re:
+        alarmClassify: special
+
+# 报警信息的接收者
+receivers:
+  - name: 'mes812'
+    email_configs:
+      # 如果想发送多个人就以 ',' 做分割
+      #- to: 'mes812@fa-software.com'
+      - to: 'qiheng.zhang@fa-software.com'
+        send_resolved: true
+        # 接收邮件的标题
+        headers: {Subject: "MES812 AlertManager报警邮件"}
+
+  - name: 'admin'
+    email_configs:
+      # 如果想发送多个人就以 ',' 做分割
+      #- to: 'qiheng.zhang@fa-software.com','zhen.xu@fa-software.com','jie.li@fa-software.com'，'yufeng.luo@fa-software.com','aofei.fu@fa-software.com'
+      - to: 'qiheng.zhang@fa-software.com'
+        send_resolved: true
+        # 接收邮件的标题
+        headers: {Subject: "MES812 AlertManager报警邮件"}
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance']
