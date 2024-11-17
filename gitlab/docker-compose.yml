@@ -10,11 +10,13 @@ services:
       GITLAB_OMNIBUS_CONFIG: |
         external_url 'http://10.10.50.200:30080'
         gitlab_rails['gitlab_shell_ssh_port'] = 22
+    privileged: true
+    shm_size: '16gb'
     deploy:
       resources:
         limits:
           cpus: '8'
-          memory: 16G
+          memory: 24G
         reservations:
           memory: 6G
     ports:
