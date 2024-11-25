@@ -1,0 +1,81 @@
+services:
+  # oracle
+  # 启动后会默认开启两个账号：sys,system
+  # 启动后可修改密码：docker exec oracle19c ./setPassword.sh oracle
+  oracle19c:
+    image: registry.cn-hangzhou.aliyuncs.com/mycim4/oracle:19.3.0-ee
+    container_name: oracle19c
+    ports:
+      - "1521:1521"
+    restart: always
+    privileged: true
+    environment:
+      - TZ=Asia/Shanghai
+      - ORACLE_SID=mycim4
+      #- ORACLE_PDB=fapdb
+      #- ORACLE_EDITION=standard
+      - ORACLE_CHARACTERSET=AL32UTF8
+      - ORACLE_PWD=fa123456
+    volumes:
+      - /mnt/oracle/data:/opt/oracle/oradata:rw
+      # 初始化过程中执行某些sql语句或bash脚本，需要将这些脚本放在/opt/oracle/scripts/setup(dbINIT/setup/)中
+      # 如果我们需要在oracle自带的初始化完成之后也就是数据库创建成功之后执行脚本，则需要将这些脚本放在/opt/oracle/scripts/startup(dbINIT/startup/)中
+      - ./dbINIT:/docker-entrypoint-initdb.d:rw
+    networks:
+      - oracle-net
+    deploy:
+      resources:
+        limits:
+          cpus: '12'
+          memory: 24G
+
+  # 此容器为常规oracle系统性能查询，promethues抓取周期为2分钟
+  # A Prometheus exporter for Oracle modeled after the MySQL exporter.
+  oracle_exporter_default:
+    image: iamseth/oracledb_exporter:latest
+    container_name: oracle_exporter
+    ports:
+      - "29161:9161"
+    restart: unless-stopped
+    networks:
+      - oracle-net
+    environment:
+      - TZ=Asia/Shanghai
+      #- DATA_SOURCE_NAME=oracle://system:fa123456@oracle19c:1521/mycim4
+      - DATA_SOURCE_NAME=system/fa123456@oracle19c/mycim4
+    command: --default.metrics="/default-metrics.toml" --log.level="info"
+    volumes:
+      - './config/default-metrics.toml:/default-metrics.toml'
+    depends_on:
+      - oracle19c
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 2G
+  # 这个容器主要负责抓取慢SQL，全盘扫描，逻辑读，物理读等等，由于查询耗时长，promethues抓取周期10分钟
+#  oracle_exporter_customer:
+#    image: iamseth/oracledb_exporter:latest
+#    container_name: oracle_exporter
+#    ports:
+#      - "29162:9161"
+#    restart: unless-stopped
+#    networks:
+#      - oracle-net
+#    environment:
+#      - TZ=Asia/Shanghai
+#      #- DATA_SOURCE_NAME=oracle://system:fa123456@oracle19c:1521/mycim4
+#      - DATA_SOURCE_NAME=system/fa123456@oracle19c/mycim4
+#    command: --default.metrics="/default-metrics.toml" --log.level="info"
+#    volumes:
+#      - './config/customer-metrics.toml:/default-metrics.toml'
+#    depends_on:
+#      - oracle19c
+#    deploy:
+#      resources:
+#        limits:
+#          cpus: '1'
+#          memory: 2G
+networks:
+  oracle-net:
+    driver: bridge

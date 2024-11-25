@@ -1,0 +1,110 @@
+#物理读
+[[metric]]
+context = "physical_disk"
+labels = ["sql_id", "sql_text"]
+metricsdesc = { reads= "Disk read.", exec= "EXECUTIONS.", reads_exec= "Reads_Exec." }
+request = """
+SELECT distinct
+       A.SQL_ID as sql_id,
+       B.SQL_TEXT as sql_text,
+       A.DISK_READS AS reads,
+       A.EXECUTIONS AS exec,
+       round(A.DISK_READS / A.EXECUTIONS) AS reads_exec
+  FROM V$SQLAREA A, V$SQL B
+ WHERE A.DISK_READS > 1000
+   AND A.EXECUTIONS > 200
+   AND A.sql_id = B.sql_id
+   AND A.MODULE = 'JDBC Thin Client'
+   AND A.DISK_READS / A.EXECUTIONS > 500
+"""
+
+#逻辑读
+[[metric]]
+context = "logical_read"
+labels = ["sql_id", "sql_text"]
+metricsdesc = { gets_exec= "gets exec.", buffer_gets= "buffer gets.", exec= "EXECUTIONS." }
+request = """
+SELECT *
+  FROM (
+        SELECT  distinct
+                A.SQL_ID,
+                B.SQL_TEXT as sql_text,
+                ROUND(A.BUFFER_GETS / A.EXECUTIONS) AS gets_exec,
+                A.BUFFER_GETS as buffer_gets,
+                A.EXECUTIONS as exec
+          FROM V$SQLAREA A, V$SQL B
+         WHERE A.BUFFER_GETS > 1000
+           AND A.sql_id = B.sql_id
+           AND A.MODULE = 'JDBC Thin Client'
+           AND A.BUFFER_GETS / A.EXECUTIONS > 2000
+           AND A.EXECUTIONS > 200
+         ORDER BY gets_exec DESC)
+ WHERE ROWNUM <= 10
+"""
+
+[[metric]]
+context = "librarycache"
+metricsdesc = { value="Generic counter metric from V$LIBRARYCACHE view in Oracle."  }
+fieldtoappend= "name"
+request = "SELECT to_char('librarycache_hit_rate') as name, round(SUM(PINHITS) / SUM(PINS), 3) AS VALUE FROM V$LIBRARYCACHE"
+
+[[metric]]
+context = "parse"
+labels = ["name"]
+metricsdesc = { value= "Soft and hard analysis." }
+request = "SELECT NAME as name, VALUE as value FROM V$SYSSTAT WHERE NAME LIKE 'parse%'"
+
+#共享池
+[[metric]]
+context = "shared_pool"
+labels = ["pool", "name"]
+metricsdesc = { bytes= "shared pool bytes." }
+request = """
+SELECT POOL as pool,
+       Name as name,
+       BYTES as bytes
+  FROM V$SGASTAT A
+ WHERE A.POOL = 'shared pool'
+   AND A.NAME = 'free memory'
+   OR A.NAME = 'row cache'
+"""
+
+#[[metric]]
+#context = "row_cache"
+#metricsdesc = { gets= "gets.", getmisses= "getmisses.", hit_rate= "hit rate." }
+#request = "SELECT SUM(GETS) as gets, SUM(GETMISSES) as getmisses, 100 * SUM(GETS - GETMISSES) / SUM(GETS) AS hit_rate FROM V$ROWCACHE"
+
+#全盘扫描
+[[metric]]
+context = "full_access"
+labels = ["sql_id", "sql_text", "obj_owner", "ogj_name"]
+metricsdesc = { size_m= "size m.", all_exec= "all executions.", max_exec= "max executions." }
+request = """
+SELECT *
+  FROM (SELECT distinct C.SQL_ID AS sql_id,
+               D.SQL_TEXT as sql_text,
+               OBJECT_OWNER AS obj_owner,
+               OBJECT_NAME AS ogj_name,
+               ROUND(B.BYTES / 1024 / 1024, 0) AS size_m,
+               SUM(EXECUTIONS_DELTA) AS all_exec,
+               MAX(EXECUTIONS_DELTA) AS max_exec,
+               ROUND(SUM(EXECUTIONS_DELTA) * B.BYTES / 1024 / 1024 / 1024 / 800,0) AS all_io_large,
+               ROUND(MAX(EXECUTIONS_DELTA) * B.BYTES / 1024 / 1024 / 1024 / 40,0) AS max_io_large
+          FROM DBA_HIST_SQL_PLAN A,
+               (SELECT OWNER, SEGMENT_NAME, SUM(BYTES) BYTES FROM DBA_SEGMENTS GROUP BY OWNER, SEGMENT_NAME) B,
+               DBA_HIST_SQLSTAT C,  V$SQL D
+         WHERE A.OPERATION = 'TABLE ACCESS'
+           AND A.OPTIONS = 'FULL'
+           AND A.OBJECT_OWNER IN (SELECT USERNAME FROM DBA_USERS WHERE ACCOUNT_STATUS = 'OPEN' AND USERNAME NOT IN ('SYS', 'SYSMAN', 'SYSTEM', 'PATROL', 'MDSYS', 'ORDDATA', 'OLAPSYS', 'EXFSYS'))
+           AND B.SEGMENT_NAME = A.OBJECT_NAME
+           AND B.OWNER = A.OBJECT_OWNER
+           AND B.BYTES > 1024 * 1024 * 10
+           AND C.SQL_ID = A.SQL_ID
+           AND C.PARSING_SCHEMA_NAME NOT IN ('SYS', 'SYSMAN', 'SYSTEM', 'PATROL', 'MDSYS', 'ORDDATA', 'OLAPSYS', 'EXFSYS')
+           AND EXECUTIONS_DELTA > 100
+           AND C.SNAP_ID > (SELECT MIN(SNAP_ID) FROM DBA_HIST_SNAPSHOT WHERE BEGIN_INTERVAL_TIME > SYSDATE - 7)
+           AND A.SQL_ID = D.SQL_ID
+         GROUP BY C.SQL_ID, D.SQL_TEXT, OBJECT_NAME, OBJECT_OWNER,B.BYTES
+         ORDER BY ROUND(B.BYTES / 1024 / 1024, 0) DESC, OBJECT_NAME)
+ WHERE ROWNUM <= 30
+"""
