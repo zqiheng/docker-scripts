@@ -1,0 +1,86 @@
+# 注意事项：
+# 1. 部署前请确认使用的镜像版本
+# 2. 可自行更改挂载的路径
+# 3. es 挂载路径授予 777 权限：chmod -R 777 /mnt/elk/es/
+services:
+  # es
+  es:
+    image: elasticsearch:7.17.25
+    container_name: es
+    privileged: true
+    restart: always
+    environment:
+      TZ: Asia/Shanghai
+      ES_JAVA_OPTS: "-Xms512m -Xmx16g -Duser.timezone=Asia/Shanghai"
+    volumes:
+      # 配置文件
+      - ./config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      # 插件文件挂载
+      - /mnt/elk/es/plugins:/usr/share/elasticsearch/plugins
+      # 数据文件挂载
+      - /mnt/elk/es/data:/usr/share/elasticsearch/data
+      # 日志文件挂载
+      - /mnt/elk/es/logs:/usr/share/elasticsearch/logs
+    ports:
+      - '19200:9200'
+      - '19300:9300'
+    deploy:
+      resources:
+        limits:
+          cpus: '8'
+          memory: 16G
+    networks:
+      - elk-net
+
+  # kibana
+  kibana:
+    image: kibana:7.17.25
+    container_name: kibana
+    privileged: true
+    restart: always
+    ports:
+      - '15601:5601'
+    environment:
+      TZ: Asia/Shanghai
+      ELASTICSEARCH_HOSTS: http://es:9200
+    depends_on:
+      - es
+    networks:
+      - elk-net
+    volumes:
+      - ./config/kibana.yml:/usr/share/kibana/config/kibana.yml
+      - /mnt/elk/kibana/logs:/usr/share/kibana/logs
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+
+  # LogStash
+  logstash:
+    image: logstash:7.17.25
+    container_name: logstash
+    privileged: true
+    restart: always
+    ports:
+      - '5044:5044'
+      - '9600:9600'
+    environment:
+      TZ: Asia/Shanghai
+      ES_JAVA_OPTS: "-Duser.timezone=Asia/Shanghai"
+    volumes:
+      - ./config/logstash.yml:/usr/share/logstash/config/logstash.yml
+      - ./config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+      - /mnt/elk/logstash/logs:/usr/share/logstash/logs
+    depends_on:
+      - es
+    networks:
+      - elk-net
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 16G
+networks:
+  elk-net:
+    driver: bridge

@@ -1,0 +1,10 @@
+cluster.name: "elasticsearch-cluster"
+network.host: 0.0.0.0
+http.cors.enabled: true
+http.cors.allow-origin: "*"
+discovery.type: single-node
+xpack.ml.enabled: false
+xpack.monitoring.collection.enabled: false
+xpack.security.enabled: false
+xpack.watcher.enabled: false
+ingest.geoip.downloader.enabled: false

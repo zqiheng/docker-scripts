@@ -1,0 +1,54 @@
+services:
+  # Web Server
+  skywalking-oap-server:
+    image: apache/skywalking-oap-server:10.1.0
+    container_name: skywalking-oap-server
+    restart: always
+    privileged: true
+    ports:
+      - '11800:11800'
+      - '12800:12800'
+    environment:
+      TZ: Asia/Shanghai
+      SW_STORAGE: elasticsearch
+      SW_STORAGE_ES_CLUSTER_NODES: es:9200
+      SW_NAMESPACE: skywalking
+    networks:
+      - skywalking-net
+      - elk_elk-net
+    volumes:
+      - ./config/alarm-settings.yml:/skywalking/config/alarm-settings.yml
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 16G
+
+  # UI
+  skywalking-ui:
+    image: apache/skywalking-ui:10.1.0
+    container_name: skywalking-ui
+    restart: always
+    privileged: true
+    ports:
+      - '18080:8080'
+    environment:
+      TZ: Asia/Shanghai
+      SW_OAP_ADDRESS: http://skywalking-oap-server:12800
+    networks:
+      - skywalking-net
+    depends_on:
+      - skywalking-oap-server
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 8G
+
+networks:
+  skywalking-net:
+    driver: bridge
+  # 连接外部 ES 网桥，SkyWalking 存储使用 ES
+  elk_elk-net:
+    external: true
+    name: elk_elk-net
