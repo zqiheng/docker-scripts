@@ -1,0 +1,117 @@
+services:
+  standalone:
+    #    image: apachepulsar/pulsar:2.10.2
+    image: registry.cn-hangzhou.aliyuncs.com/mycim4/pulsar:2.10.2
+    container_name: pulsar
+    restart: always
+    environment:
+      - BOOKIE_MEM=" -Xms512m -Xmx512m -XX:MaxDirectMemorySize=1g"
+    volumes:
+      - ./pulsar/pulsardata:/pulsar/data:rw
+      - ./pulsar/pulsarconf/standalone.conf:/pulsar/conf/standalone.conf:rw
+    ports:
+      - 28080:8080
+      - 6650:6650
+      - 3181:3181
+    networks:
+      - mycim
+    command: >
+      /bin/bash -c
+      "bin/apply-config-from-env.py conf/standalone.conf
+      && exec bin/pulsar standalone --no-functions-worker --no-stream-storage --advertised-address standalone"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: "1G"
+
+  # pulsar-manager
+  pulsar-manager:
+    #    image: apachepulsar/pulsar-manager:v0.3.0
+    image: registry.cn-hangzhou.aliyuncs.com/mycim4/pulsar-manager:0.3.1
+    container_name: pulsar-manager
+    restart: always
+    ports:
+      - "9527:9527"
+      - "7750:7750"
+    #depends_on:
+    #  - standalone
+    #links:
+    #  - standalone
+    networks:
+      - mycim
+    environment:
+      - SPRING_CONFIGURATION_FILE=/pulsar-manager/pulsar-manager/application.properties
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: "1G"
+
+  # redis
+  redis:
+    #    image: redis:6.2.7
+    image: registry.cn-hangzhou.aliyuncs.com/mycim4/redis:6.2.7
+    container_name: redis
+    ports:
+      - 6379:6379
+    restart: unless-stopped
+    volumes:
+      - ./redis/data:/data:rw
+      - ./redis/logs:/logs:rw
+      - ./redis/conf/redis.conf:/usr/local/etc/redis/redis.conf:rw
+    networks:
+      - mycim
+    deploy:
+      resources:
+        limits:
+          cpus: "1.00"
+          memory: "1G"
+
+  # nacos
+  nacos:
+    image: registry.cn-hangzhou.aliyuncs.com/mycim4/nacos:2.2.0
+    container_name: nacos-standalone
+    restart: unless-stopped
+    environment:
+      - PREFER_HOST_MODE=hostname
+      - MODE=standalone
+    networks:
+      - mycim
+    volumes:
+      - ./nacos/logs/:/home/nacos/logs:rw
+      - ./nacos/data/:/home/nacos/data:rw
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+
+  # zookeeper
+  zookeeper:
+    image: registry.cn-hangzhou.aliyuncs.com/mycim4/zookeeper:3.8.0-temurin
+    container_name: zookeeper
+    restart: always
+    networks:
+      - mycim
+    ports:
+      - 12181:2181
+      - 12888:2888
+      - 13888:3888
+      - 18080:8080
+    volumes:
+      - ./zookeeper/conf/zoo.cfg:/conf/zoo.cfg
+      - ./zookeeper/data:/data
+      - ./zookeeper/logs:/datalog
+    environment:
+      - TZ=Asia/Shanghai
+      #- JVMFLAGS="-Xmx1024m"
+      - JAVA_OPTS=-server -Xms512m -Xmx512m -Xmn256m -Duser.home=/opt -XX:MetaspaceSize=128m -XX:MaxMetaspaceSize=320m -XX:+AlwaysPreTouch -XX:-UseBiasedLocking
+
+volumes:
+  pulsardata:
+    driver: local
+  pulsarconf:
+    driver: local
+
+networks:
+  mycim:
+    driver: bridge

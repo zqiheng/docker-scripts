@@ -1,0 +1,65 @@
+services:
+  bookstack:
+    image: linuxserver/bookstack:23.12.2
+    container_name: bookstack
+    restart: always
+    privileged: true
+    environment:
+      TZ: Asia/Shanghai
+      PUID: 1000
+      PGID: 1000
+      APP_URL: http://10.10.50.200:18070
+      DB_HOST: bookstack-db
+      DB_PORT: 3306
+      DB_DATABASE: bookstack
+      DB_USERNAME: root
+      DB_PASSWORD: Admin@123
+      #APP_KEY: ZsLshMkC6DLOL/tPqs81Qu5Yi+dveIZgosSRCBzdAJw=
+      # LDAP Config
+      #AUTH_METHOD: standard
+#      AUTH_METHOD: ldap
+#      LDAP_SERVER: 10.10.50.3:389
+#      LDAP_BASE_DN: cn=users,cn=accounts,dc=fa-software,dc=local
+#      LDAP_DN: uid=admin,cn=users,cn=accounts,dc=fa-software,dc=local
+#      LDAP_PASS: Qaz1Wsx2
+#      LDAP_USER_FILTER: (&(objectClass=inetorgPerson)(uid=$${user}))
+#      LDAP_VERSION: 3
+#      LDAP_ID_ATTRIBUTE: uid
+#      LDAP_EMAIL_ATTRIBUTE: mail
+#      LDAP_DISPLAY_NAME_ATTRIBUTE: cn
+    volumes:
+      - /mnt/bookstack/config:/config
+    ports:
+      - "18070:80"
+    depends_on:
+      - bookstack-db
+    networks:
+      - bookstack-net
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 16G
+
+  bookstack-db:
+    image: mariadb:10.6
+    container_name: bookstack-db
+    restart: always
+    privileged: true
+    volumes:
+      - /mnt/bookstack/mysql:/var/lib/mysql
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_DATABASE: bookstack
+      MYSQL_ROOT_PASSWORD: Admin@123
+    networks:
+      - bookstack-net
+
+networks:
+  bookstack-net:
+    driver: bridge

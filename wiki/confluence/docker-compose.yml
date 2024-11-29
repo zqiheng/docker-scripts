@@ -1,0 +1,43 @@
+services:
+  confluence:
+    image: swr.cn-southwest-2.myhuaweicloud.com/eric/confluence:7.9.3
+    container_name: confluence
+    privileged: true
+    restart: always
+    ports:
+      - '18090:8090'
+    volumes:
+      - '/mnt/confluence/data:/var/atlassian/confluence'
+      - '/mnt/confluence/logs:/opt/atlassian/confluence/logs'
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 16G
+    networks:
+      - confluence-net
+
+  confluence-db:
+    image: postgres:15.4
+    container_name: confluence-db
+    restart: always
+    networks:
+      - confluence-net
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 8G
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_DB: confluence
+      POSTGRES_USER: confluence
+      POSTGRES_PASSWORD: confluence123
+      LANG: C.UTF-8
+    volumes:
+      - '/mnt/confluence/postgresql:/var/lib/postgresql'
+      - '/mnt/confluence/postgresql/data/:/var/lib/postgresql/data'
+
+networks:
+  confluence-net:
+    driver: bridge
