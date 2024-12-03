@@ -12,7 +12,7 @@ services:
       TZ: Asia/Shanghai
       SW_STORAGE: elasticsearch
       SW_STORAGE_ES_CLUSTER_NODES: es:9200
-      SW_NAMESPACE: skywalking
+      SW_NAMESPACE: sky10
     networks:
       - skywalking-net
       - elk_elk-net
@@ -35,6 +35,7 @@ services:
     environment:
       TZ: Asia/Shanghai
       SW_OAP_ADDRESS: http://skywalking-oap-server:12800
+      JAVA_OPTS: "${JAVA_OPTS:- -Dcom.linecorp.armeria.defaultWriteTimeoutMillis=300000 -Dcom.linecorp.armeria.defaultResponseTimeoutMillis=120000 -Dcom.linecorp.armeria.defaultRequestTimeoutMillis=120000 -Dcom.linecorp.armeria.defaultServerIdleTimeoutMillis=120000 -Dcom.linecorp.armeria.defaultConnectTimeoutMillis=120000 -Dcom.linecorp.armeria.defaultMaxRequestLength=104857600 -Dcom.linecorp.armeria.defaultMaxResponseLength=104857600}"
     networks:
       - skywalking-net
     depends_on:
