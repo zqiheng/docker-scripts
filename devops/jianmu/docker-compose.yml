@@ -4,16 +4,23 @@ services:
     image: docker.jianmuhub.com/library/mysql:8.0.31
     command: --init-connect='SET NAMES utf8' --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=1200 --max-user-connections=1000
     restart: always
+    privileged: true
     environment:
       MYSQL_ROOT_PASSWORD: 123456
       MYSQL_DATABASE: "jianmu"
       TZ: "Asia/Shanghai"
     volumes:
       - /mnt/devops/jianmu/mysql:/var/lib/mysql
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
 
   ci-server:
     image: docker.jianmuhub.com/jianmu/jianmu-server:v2.8.0
     restart: always
+    privileged: true
     environment:
       SPRING_PROFILES_ACTIVE: dev
       SPRING_DATASOURCE_URL: jdbc:mysql://jianmu-mysql:3306/jianmu?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true
@@ -26,10 +33,16 @@ services:
     depends_on:
       - jianmu-mysql
     entrypoint: ["wait-for-it.sh", "jianmu-mysql:3306", "-t", "0", "--", "java", "-Duser.timezone=Asia/Shanghai",  "-jar", "jianmu-server.jar"]
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
 
   worker:
     image: docker.jianmuhub.com/jianmu/jianmu-worker-docker:v1.0.13
     restart: always
+    privileged: true
     environment:
       JIANMU_SRV_ADDRESS: http://ci-server:8081
       JIANMU_SRV_SECRET: worker-secret
@@ -41,16 +54,27 @@ services:
     depends_on:
       - jianmu-mysql
       - ci-server
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
 
   web:
     image: docker.jianmuhub.com/jianmu/jianmu-ui:v2.8.0
     ports:
-      - "10080:80"
-      - "10443:443"
+      - "20080:80"
+      - "20443:443"
     restart: always
+    privileged: true
     depends_on:
       - jianmu-mysql
       - ci-server
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
 
 networks:
   default:
