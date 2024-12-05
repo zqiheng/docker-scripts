@@ -1,0 +1,23 @@
+services:
+  jpom:
+    image: registry.cn-chengdu.aliyuncs.com/jpomdocker/jpom:2.11.11
+    container_name: jpom
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "2122:2122"
+    environment:
+      TZ: Asia/Shanghai
+      LANG: en_US.UTF-8
+      "jpom.authorize.token": 7024f673-1c53-4fc1-82e7-86e528449d97
+    volumes:
+      # config
+      - "./conf:/usr/local/jpom-server/conf"
+      # data
+      - "/mnt/devops/jpom/data:/usr/local/jpom-server/data"
+      - "/mnt/devops/jpom/logs:/usr/local/jpom-server/logs"
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
