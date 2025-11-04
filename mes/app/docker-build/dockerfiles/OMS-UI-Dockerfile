@@ -1,0 +1,11 @@
+FROM swr.cn-southwest-2.myhuaweicloud.com/eric/nginx:1.27.3
+WORKDIR /app
+
+COPY ../nginxconf/nginx.conf /etc/nginx/nginx.conf
+COPY ../ui-packages/dist .
+
+RUN mkdir -p /opt/mes/oms
+RUN tar -xzf *.tar.gz -C /opt/mes/oms && rm -rf *.tar.gz
+
+ENTRYPOINT [ "/usr/sbin/nginx", "-g", "daemon off;" ]
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo 'Asia/Shanghai' >/etc/timezone

@@ -1,0 +1,9 @@
+services:
+  # 首页导航栏
+  mycim4-oms-doc:
+    image: 10.10.50.200:38080/mes812/mycim4-oms-doc:latest
+    container_name: mycim4-oms-doc
+    ports:
+      - '18060:80'
+    environment:
+      TZ: Asia/Shanghai

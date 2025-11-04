@@ -1,0 +1,8 @@
+FROM swr.cn-southwest-2.myhuaweicloud.com/eric/openjdk:jre-8
+WORKDIR /app
+
+ENV JAVA_OPS=""
+
+COPY ../server-packages/mycim-uac-foundation*.jar /app/app.jar
+
+ENTRYPOINT ["sh","-c","java -Djava.security.egd=file:/dev/./urandom -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/heapdump.hprof -Dfile.encoding=utf-8 $JAVA_OPS -jar /app/app.jar"]

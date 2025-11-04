@@ -1,0 +1,119 @@
+services:
+
+  mycim-oms-foundation:
+    image: mycim-oms-foundation:2.1.0-HXSMC
+    container_name: mycim-oms-foundation
+    ports:
+      - '8202:8202'
+    environment:
+      TZ: Asia/Shanghai
+      NACOS_ADDRESS: 10.10.50.201:8848
+      NACOS_USERNAME: nacos
+      NACOS_PASSWORD: nacos
+      NACOS_NAMESPACE: eric
+      SPRING_ACTIVE_FILE: eric
+      "spring.cloud.nacos.config.file-extension": yml
+      JAVA_OPS: -Xms4g -Xmx8g
+      DB_URL: jdbc:oracle:thin:@//oracle19c:1521/MYCIM4
+      OMS_GLOBAL_SERVICE_URL: 192.168.10.210:6650
+    networks:
+      - oracle_default
+      - mes-tool_mycim
+
+  mycim-oms-deployment:
+    image: mycim-oms-deployment:2.1.0-HXSMC
+    container_name: mycim-oms-deployment
+    environment:
+      TZ: Asia/Shanghai
+      NACOS_ADDRESS: 10.10.50.201:8848
+      NACOS_USERNAME: nacos
+      NACOS_PASSWORD: nacos
+      NACOS_NAMESPACE: eric
+      SPRING_ACTIVE_FILE: eric
+      "spring.cloud.nacos.config.file-extension": yml
+      JAVA_OPS: -Xms1g -Xmx1g
+      DB_URL: jdbc:oracle:thin:@//oracle19c:1521/MYCIM4
+      PULSAR_GLOBAL_URL: 192.168.10.210:6650
+    networks:
+      - oracle_default
+      - mes-tool_mycim
+
+  mycim-mds-foundation:
+    image: mycim-mds-foundation:2.1.0-HXSMC
+    container_name: mycim-mds-foundation
+    ports:
+      - '9000:9000'
+    environment:
+      TZ: Asia/Shanghai
+      NACOS_ADDRESS: 10.10.50.201:8848
+      NACOS_USERNAME: nacos
+      NACOS_PASSWORD: nacos
+      NACOS_NAMESPACE: eric
+      SPRING_ACTIVE_FILE: eric
+      "spring.cloud.nacos.config.file-extension": yml
+      MYCIM_MDS_IP: 192.168.10.210
+      MYCIM_MDS_PORT: 9000
+      PORT: 9000
+      JAVA_OPS: -Xms1g -Xmx2g
+      JDBC_URL: jdbc:oracle:thin:@//oracle19c:1521/MYCIM4
+      PULSAR_ADDRESS: 192.168.10.210:6650
+      "mycim.file-system.url": http://192.168.10.210:9001/mds/
+    networks:
+      - oracle_default
+      - mes-tool_mycim
+
+  mycim-uac-foundation:
+    image: mycim-uac-foundation:2.1.0-HXSMC
+    container_name: mycim-uac-foundation
+    ports:
+      - '20600:20600'
+    environment:
+      TZ: Asia/Shanghai
+      NACOS_ADDRESS: 10.10.50.201:8848
+      NACOS_USERNAME: nacos
+      NACOS_PASSWORD: nacos
+      NACOS_NAMESPACE: eric
+      NACOS_CONFIG: mycim-uac-foundation-eric.yml
+      JAVA_OPS: -Xms1g -Xmx1g
+      "spring.datasource.url": jdbc:oracle:thin:@//oracle19c:1521/MYCIM4
+      INTEGRATION_SERVICE_URL: 192.168.10.210:6650
+    networks:
+      - oracle_default
+      - mes-tool_mycim
+
+  mycim-oms-ui:
+    image: mycim-oms-ui:2.1.0-HXSMC
+    container_name: mycim-oms-ui
+    ports:
+      - '8200:8200'  # OMS UI
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - './conf.d/mycim-oms-ui:/etc/nginx/conf.d'
+  mycim-mds-ui:
+    image: mycim-mds-ui:2.1.0-HXSMC
+    container_name: mycim-mds-ui
+    ports:
+      - '9001:9001'  # MDS UI
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - './conf.d/mycim-mds-ui:/etc/nginx/conf.d'
+  mycim-uac-ui:
+    image: mycim-uac-ui:2.1.0-HXSMC
+    container_name: mycim-uac-ui
+    ports:
+      - '20601:20601'  # UAC UI
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - './conf.d/mycim-uac-ui:/etc/nginx/conf.d'
+
+
+networks:
+  oracle_default:
+    external: true
+    name: oracle_default
+  mes-tool_mycim:
+    external: true
+    name: mes-tool_mycim

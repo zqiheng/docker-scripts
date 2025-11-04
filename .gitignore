@@ -21,3 +21,6 @@
 **/oradata/MYCIM4/
 **/oradata/dbconfig/
 **/oradata/*.created
+
+**/*.jar
+**/*.tar.gz

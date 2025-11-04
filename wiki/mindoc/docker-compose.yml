@@ -1,0 +1,30 @@
+services:
+  # mindoc 服务
+  mindoc:
+    image: registry.cn-hangzhou.aliyuncs.com/mindoc-org/mindoc:v2.2-beta.1
+    container_name: mindoc
+    privileged: false
+    restart: always
+    ports:
+      - 18181:8181
+    volumes:
+      - /mnt/mindoc/conf://mindoc/conf
+      - /mnt/mindoc/static://mindoc/static
+      - /mnt/mindoc/views://mindoc/views
+      - /mnt/mindoc/uploads://mindoc/uploads
+      - /mnt/mindoc/runtime://mindoc/runtime
+      - /mnt/mindoc/database://mindoc/database
+    environment:
+      - MINDOC_RUN_MODE=prod
+      - MINDOC_DB_ADAPTER=sqlite3
+      - MINDOC_DB_DATABASE=./database/mindoc.db
+      - MINDOC_CACHE=true
+      - MINDOC_CACHE_PROVIDER=file
+      - MINDOC_ENABLE_EXPORT=false
+      - MINDOC_BASE_URL=
+      - MINDOC_CDN_IMG_URL=
+      - MINDOC_CDN_CSS_URL=
+      - MINDOC_CDN_JS_URL=
+    dns:
+      - 223.5.5.5
+      - 223.6.6.6

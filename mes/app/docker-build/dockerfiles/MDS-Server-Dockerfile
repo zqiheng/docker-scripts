@@ -1,0 +1,8 @@
+FROM swr.cn-southwest-2.myhuaweicloud.com/eric/zulujdk:jdk-8u432-fx-x86
+WORKDIR /app
+
+ENV JAVA_OPS=""
+
+COPY ../server-packages/mycim-mds-foundation*.jar /app/mycim-mds-foundation.jar
+
+ENTRYPOINT ["sh","-c","java -Djava.security.egd=file:/dev/./urandom -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=/app/heapdump.hprof -Dfile.encoding=utf-8 $JAVA_OPS -jar /app/mycim-mds-foundation.jar"]
