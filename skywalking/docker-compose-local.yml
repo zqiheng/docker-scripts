@@ -1,0 +1,68 @@
+x-default-logging: &logging
+  driver: "json-file"
+  options:
+    max-size: "5m"
+    max-file: "2"
+    tag: "{{.Name}}"
+
+networks:
+  skywalking-net:
+    driver: bridge
+  # 连接外部 ES 网桥，SkyWalking 存储使用 ES
+  elk_elk-net:
+    external: true
+    name: elk_elk-net
+
+services:
+  # Web Server
+  skywalking-oap-server:
+    image: apache/skywalking-oap-server:10.1.0
+    container_name: skywalking-oap-server
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - '11800:11800'
+      - '12800:12800'
+    environment:
+      TZ: Asia/Shanghai
+      SW_STORAGE: elasticsearch
+      SW_STORAGE_ES_CLUSTER_NODES: es:9200
+      SW_NAMESPACE: sky10
+      # 测试与 OTLP 集成，测试失败
+      #SW_RECEIVER_ZIPKIN: default
+      #SW_QUERY_ZIPKIN: default
+    networks:
+      - skywalking-net
+      - elk_elk-net
+    volumes:
+      - ./config/alarm-settings.yml:/skywalking/config/alarm-settings.yml
+      - ./config/application.yml:/skywalking/config/application.yml
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 3G
+    logging: *logging
+
+  # UI
+  skywalking-ui:
+    image: apache/skywalking-ui:10.1.0
+    container_name: skywalking-ui
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - '18080:8080'
+    environment:
+      TZ: Asia/Shanghai
+      SW_OAP_ADDRESS: http://skywalking-oap-server:12800
+      JAVA_OPTS: "${JAVA_OPTS:- -Dcom.linecorp.armeria.defaultWriteTimeoutMillis=300000 -Dcom.linecorp.armeria.defaultResponseTimeoutMillis=120000 -Dcom.linecorp.armeria.defaultRequestTimeoutMillis=120000 -Dcom.linecorp.armeria.defaultServerIdleTimeoutMillis=120000 -Dcom.linecorp.armeria.defaultConnectTimeoutMillis=120000 -Dcom.linecorp.armeria.defaultMaxRequestLength=104857600 -Dcom.linecorp.armeria.defaultMaxResponseLength=104857600}"
+    networks:
+      - skywalking-net
+    depends_on:
+      - skywalking-oap-server
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 512M
+    logging: *logging

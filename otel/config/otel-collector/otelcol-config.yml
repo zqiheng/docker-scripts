@@ -1,0 +1,203 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# 数据接收器配置
+receivers:
+  # Data sources: traces, metrics, logs
+  otlp:
+    protocols:
+      grpc:
+        endpoint: ${env:OTEL_COLLECTOR_HOST}:${env:OTEL_COLLECTOR_PORT_GRPC}
+      http:
+        endpoint: ${env:OTEL_COLLECTOR_HOST}:${env:OTEL_COLLECTOR_PORT_HTTP}
+        cors:
+          allowed_origins:
+            - "http://*"
+            - "https://*"
+  #  httpcheck/frontend-proxy:
+  #    targets:
+  #      - endpoint: http://${env:FRONTEND_PROXY_ADDR}
+  #  nginx:
+  #    endpoint: http://${env:IMAGE_PROVIDER_HOST}:${env:IMAGE_PROVIDER_PORT}/status
+  #    collection_interval: 10s
+  docker_stats:
+    endpoint: unix:///var/run/docker.sock
+  #  postgresql:
+  #    endpoint: ${POSTGRES_HOST}:${POSTGRES_PORT}
+  #    username: root
+  #    password: ${POSTGRES_PASSWORD}
+  #    metrics:
+  #      postgresql.blks_hit:
+  #        enabled: true
+  #      postgresql.blks_read:
+  #        enabled: true
+  #      postgresql.tup_fetched:
+  #        enabled: true
+  #      postgresql.tup_returned:
+  #        enabled: true
+  #      postgresql.tup_inserted:
+  #        enabled: true
+  #      postgresql.tup_updated:
+  #        enabled: true
+  #      postgresql.tup_deleted:
+  #        enabled: true
+  #      postgresql.deadlocks:
+  #        enabled: true
+  #    tls:
+  #      insecure: true
+  #  redis:
+  #    endpoint: "valkey-cart:6379"
+  #    username: "valkey"
+  #    collection_interval: 10s
+  # Data sources: metrics
+  hostmetrics:
+    root_path: /hostfs
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+          system.cpu.logical.count:
+            enabled: true
+      disk:
+      load:
+      filesystem:
+        exclude_mount_points:
+          mount_points:
+            - /dev/*
+            - /proc/*
+            - /sys/*
+            - /run/k3s/containerd/*
+            - /var/lib/docker/*
+            - /var/lib/kubelet/*
+            - /snap/*
+          match_type: regexp
+        exclude_fs_types:
+          fs_types:
+            - autofs
+            - binfmt_misc
+            - bpf
+            - cgroup2
+            - configfs
+            - debugfs
+            - devpts
+            - devtmpfs
+            - fusectl
+            - hugetlbfs
+            - iso9660
+            - mqueue
+            - nsfs
+            - overlay
+            - proc
+            - procfs
+            - pstore
+            - rpc_pipefs
+            - securityfs
+            - selinuxfs
+            - squashfs
+            - sysfs
+            - tracefs
+          match_type: strict
+      memory:
+        metrics:
+          system.memory.utilization:
+            enabled: true
+          system.memory.limit:
+            enabled: true
+      network:
+      paging:
+        metrics:
+          system.paging.usage:
+            enabled: true
+
+      processes:
+      process:
+        mute_process_exe_error: true
+        mute_process_io_error: true
+        mute_process_user_error: true
+      system:
+        metrics:
+          system.uptime:
+            enabled: true
+
+# 导出器将数据发送到一个或多个后端或目标位置。导出器可以是基于拉取或推送，并且可能支持一个或多个数据来源 。
+exporters:
+  # 导出到控制台日志输出
+  debug:
+  # 导出到 jaeger
+  otlp:
+    endpoint: "eric-jaeger:4317"
+    tls:
+      insecure: true
+  # 导出到 prometheus
+  otlphttp/prometheus:
+    endpoint: "http://eric-prometheus:9090/api/v1/otlp"
+    tls:
+      insecure: true
+  # 导出到 opensearch
+  opensearch:
+    logs_index: otel-logs
+    logs_index_time_format: "yyyy-MM-dd"
+    http:
+      endpoint: "http://eric-opensearch:9200"
+      tls:
+        insecure: true
+
+# 数据处理器配置，处理器接 receivers 收集的数据，并对其进行修改或转换，然后再将其发送给 exporters
+processors:
+  # 批处理处理器接收跨度、指标或日志，并将它们放入批次中。批处理有助于更好地压缩数据，并减少传输数据所需的出站连接数。此处理器支持基于大小和基于时间的批处理。
+  # 参考：https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/batchprocessor/README.md
+  batch:
+  # 内存限制处理器用于防止收集器出现内存不足的情况
+  # 参考：https://github.com/open-telemetry/opentelemetry-collector/blob/main/processor/memorylimiterprocessor/README.md
+  memory_limiter:
+    check_interval: 5s  # 检查内存使用的时间间隔，请按需更改
+    limit_percentage: 80  # 最大内存使用百分比，请按需更改
+    spike_limit_percentage: 25  # 允许突发使用的额外内存百分比，请按需更改
+  # 资源检测配置
+  resourcedetection:
+    detectors: [ env, docker, system ]
+  # 数据转换
+  transform:
+    error_mode: ignore
+    trace_statements:
+      - context: span
+        statements:
+          # could be removed when https://github.com/vercel/next.js/pull/64852 is fixed upstream
+          - replace_pattern(name, "\\?.*", "")
+          - replace_match(name, "GET /api/products/*", "GET /api/products/{productId}")
+
+# 数据连接器配置
+connectors:
+  spanmetrics:
+
+# 核心服务配置，使用管道将组件启动
+service:
+  pipelines:
+    traces:
+      receivers: [ otlp ]
+      processors: [ resourcedetection, memory_limiter, transform, batch ]
+      exporters: [ otlp, debug, spanmetrics ]
+
+    metrics:
+      #receivers: [docker_stats, httpcheck/frontend-proxy, hostmetrics, nginx, otlp, postgresql, redis, spanmetrics]
+      receivers: [ docker_stats, hostmetrics, otlp, spanmetrics ]
+      processors: [ resourcedetection, memory_limiter, batch ]
+      exporters: [ otlphttp/prometheus, debug ]
+
+    logs:
+      receivers: [ otlp ]
+      processors: [ resourcedetection, memory_limiter, batch ]
+      exporters: [ opensearch, debug ]
+
+  telemetry:
+    metrics:
+      level: detailed
+      readers:
+        - periodic:
+            interval: 10000
+            timeout: 5000
+            exporter:
+              otlp:
+                protocol: http/protobuf
+                endpoint: http://${env:OTEL_COLLECTOR_HOST}:${env:OTEL_COLLECTOR_PORT_HTTP}

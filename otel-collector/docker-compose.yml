@@ -1,0 +1,54 @@
+x-default-logging: &logging
+  driver: "json-file"
+  options:
+    max-size: "5m"
+    max-file: "2"
+    tag: "{{.Name}}"
+
+networks:
+  default:
+    name: otel-demo
+    driver: bridge
+  # 连接外部网桥
+  skywalking_skywalking-net:
+    external: true
+    name: skywalking_skywalking-net
+  otel-demo:
+    external: true
+    name: otel-demo
+
+services:
+  # OpenTelemetry Collector
+  otel-collector:
+    image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.139.0
+    container_name: local-otel-collector
+    deploy:
+      resources:
+        limits:
+          memory: 200M
+    restart: unless-stopped
+    command: [ "--config=/etc/otelcol-config.yml", "--config=/etc/otelcol-config-extras.yml" ]
+    user: 0:0
+    volumes:
+      - /:/hostfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./config/otel-collector/otelcol-config.yml:/etc/otelcol-config.yml
+      - ./config/otel-collector/otelcol-config-extras.yml:/etc/otelcol-config-extras.yml
+    ports:
+      - "${OTEL_COLLECTOR_PORT_GRPC}:${OTEL_COLLECTOR_PORT_GRPC}"
+      - "${OTEL_COLLECTOR_PORT_HTTP}:${OTEL_COLLECTOR_PORT_HTTP}"
+    logging: *logging
+    environment:
+      - OTEL_COLLECTOR_HOST
+      - OTEL_COLLECTOR_PORT_GRPC
+      - OTEL_COLLECTOR_PORT_HTTP
+      - GOMEMLIMIT=160MiB
+      - JAEGER_HOST
+      - JAEGER_GRPC_PORT
+      - PROMETHEUS_HOST
+      - PROMETHEUS_PORT
+      - OPENSEARCH_HOST
+      - OPENSEARCH_PORT
+    networks:
+      - skywalking_skywalking-net
+      - otel-demo

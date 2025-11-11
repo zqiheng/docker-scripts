@@ -1,0 +1,211 @@
+x-default-logging: &logging
+  driver: "json-file"
+  options:
+    max-size: "5m"
+    max-file: "2"
+    tag: "{{.Name}}"
+
+networks:
+  default:
+    name: otel-demo
+    driver: bridge
+
+services:
+  # ********************
+  # Telemetry Components
+  # ********************
+  jaeger:
+    image: ${JAEGERTRACING_IMAGE}
+    container_name: eric-jaeger
+    command:
+      - "--config=file:/etc/jaeger/config.yml"
+    deploy:
+      resources:
+        limits:
+          memory: 1200M
+    restart: unless-stopped
+    ports:
+      - "${JAEGER_UI_PORT}"
+      - "${JAEGER_GRPC_PORT}"
+    environment:
+      - JAEGER_HOST
+      - JAEGER_GRPC_PORT
+      - PROMETHEUS_ADDR
+      - OTEL_COLLECTOR_HOST
+      - OTEL_COLLECTOR_PORT_HTTP
+      - MEMORY_MAX_TRACES=25000
+    volumes:
+      - ./config/jaeger/config.yml:/etc/jaeger/config.yml
+    logging: *logging
+
+  # Grafana
+  grafana:
+    image: ${GRAFANA_IMAGE}
+    container_name: eric-grafana
+    deploy:
+      resources:
+        limits:
+          memory: 120M
+    restart: unless-stopped
+    environment:
+      - "GF_INSTALL_PLUGINS=grafana-opensearch-datasource"
+    volumes:
+      - ./config/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./config/grafana/provisioning/:/etc/grafana/provisioning/
+    ports:
+      - "${GRAFANA_PORT}"
+    logging: *logging
+
+  # OpenTelemetry Collector
+#  otel-collector:
+#    image: ${COLLECTOR_CONTRIB_IMAGE}
+#    container_name: eric-otel-collector
+#    deploy:
+#      resources:
+#        limits:
+#          memory: 200M
+#    restart: unless-stopped
+#    command: [ "--config=/etc/otelcol-config.yml", "--config=/etc/otelcol-config-extras.yml" ]
+#    user: 0:0
+#    volumes:
+#      - /:/hostfs:ro
+#      - /var/run/docker.sock:/var/run/docker.sock:ro
+#      - ./config/otel-collector/otelcol-config.yml:/etc/otelcol-config.yml
+#      - ./config/otel-collector/otelcol-config-extras.yml:/etc/otelcol-config-extras.yml
+#    ports:
+#      - "${OTEL_COLLECTOR_PORT_GRPC}:${OTEL_COLLECTOR_PORT_GRPC}"
+#      - "${OTEL_COLLECTOR_PORT_HTTP}:${OTEL_COLLECTOR_PORT_HTTP}"
+#    depends_on:
+#      jaeger:
+#        condition: service_started
+#      opensearch:
+#        condition: service_healthy
+#    logging: *logging
+#    environment:
+#      - FRONTEND_PROXY_ADDR
+#      - IMAGE_PROVIDER_HOST
+#      - IMAGE_PROVIDER_PORT
+#      - HOST_FILESYSTEM
+#      - OTEL_COLLECTOR_HOST
+#      - OTEL_COLLECTOR_PORT_GRPC
+#      - OTEL_COLLECTOR_PORT_HTTP
+#      - POSTGRES_HOST
+#      - POSTGRES_PORT
+#      - POSTGRES_PASSWORD
+#      - GOMEMLIMIT=160MiB
+
+  # Prometheus
+  prometheus:
+    image: ${PROMETHEUS_IMAGE}
+    container_name: eric-prometheus
+    command:
+      - --web.console.templates=/etc/prometheus/consoles
+      - --web.console.libraries=/etc/prometheus/console_libraries
+      - --storage.tsdb.retention.time=1h
+      - --config.file=/etc/prometheus/prometheus-config.yaml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+      - --web.route-prefix=/
+      - --web.enable-otlp-receiver
+      - --enable-feature=exemplar-storage
+    volumes:
+      - ./config/prometheus/prometheus-config.yaml:/etc/prometheus/prometheus-config.yaml
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+    restart: unless-stopped
+    ports:
+      - "${PROMETHEUS_PORT}:${PROMETHEUS_PORT}"
+    logging: *logging
+
+  # OpenSearch
+  opensearch:
+    container_name: eric-opensearch
+#    image: opensearchproject/opensearch:3.2.0
+    build:
+      context: ./
+      dockerfile: ${OPENSEARCH_DOCKERFILE}
+    deploy:
+      resources:
+        limits:
+          memory: 800M
+    restart: unless-stopped
+    environment:
+      - cluster.name=demo-cluster
+      - node.name=demo-node
+      - bootstrap.memory_lock=true
+      - discovery.type=single-node
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      - DISABLE_INSTALL_DEMO_CONFIG=true
+      - DISABLE_SECURITY_PLUGIN=true
+      - network.host=0.0.0.0
+      # Workaround on OSX for https://bugs.openjdk.org/browse/JDK-8345296
+      - _JAVA_OPTIONS
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    ports:
+      - "9200"
+    healthcheck:
+      test: curl -s http://localhost:9200/_cluster/health | grep -E '"status":"(green|yellow)"'
+      start_period: 10s
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    logging: *logging
+  # 登陆页面问题没解决，暂时不用
+  # opensearch-dashboards
+#  opensearch-dashboards:
+#    container_name: eric-opensearch-dashboards
+#    #image: opensearchproject/opensearch-dashboards:3.2.0 # Make sure the version of opensearch-dashboards matches the version of opensearch installed on other nodes
+#    build:
+#      context: ./
+#      dockerfile: ${OPENSEARCH_DASHBOARD_DOCKERFILE}
+#    ports:
+#      - "5601:5601" # Map host port 5601 to container port 5601
+#    expose:
+#      - "5601" # Expose port 5601 for web access to OpenSearch Dashboards
+#    environment:
+#      OPENSEARCH_HOSTS: '["http://eric-opensearch:9200"]' # Define the OpenSearch nodes that OpenSearch Dashboards will query
+#      i18n.locale: "zh-CN"
+#    logging: *logging
+
+  # Frontend Proxy (Envoy)
+  frontend-proxy:
+    image: ${IMAGE_NAME}:${DEMO_VERSION}-frontend-proxy
+    container_name: eric-frontend-proxy
+    build:
+      context: ./
+      dockerfile: ${FRONTEND_PROXY_DOCKERFILE}
+      cache_from:
+        - ${IMAGE_NAME}:${IMAGE_VERSION}-frontend-proxy
+    deploy:
+      resources:
+        limits:
+          memory: 65M
+    restart: unless-stopped
+    ports:
+      - "${ENVOY_PORT}:${ENVOY_PORT}"
+      - "${ENVOY_ADMIN_PORT}:${ENVOY_ADMIN_PORT}"
+    environment:
+      - GRAFANA_PORT
+      - GRAFANA_HOST
+      - JAEGER_UI_PORT
+      - JAEGER_HOST
+      - OTEL_COLLECTOR_HOST
+      - OTEL_COLLECTOR_PORT_GRPC
+      - OTEL_COLLECTOR_PORT_HTTP
+      - OTEL_RESOURCE_ATTRIBUTES
+      - OTEL_SERVICE_NAME=frontend-proxy
+      - ENVOY_PORT
+      - ENVOY_ADDR
+      - ENVOY_ADMIN_PORT
+    depends_on:
+      jaeger:
+        condition: service_started
+      grafana:
+        condition: service_started
+    dns_search: ""

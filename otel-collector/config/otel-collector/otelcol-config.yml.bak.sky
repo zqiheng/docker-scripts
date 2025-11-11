@@ -1,0 +1,40 @@
+# Copyright The OpenTelemetry Authors
+# SPDX-License-Identifier: Apache-2.0
+
+# 接收数据配置
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: ${env:OTEL_COLLECTOR_HOST}:${env:OTEL_COLLECTOR_PORT_GRPC}
+      http:
+        endpoint: ${env:OTEL_COLLECTOR_HOST}:${env:OTEL_COLLECTOR_PORT_HTTP}
+        cors:
+          allowed_origins:
+            - "http://*"
+            - "https://*"
+
+# 导入数据配置
+exporters:
+  # skywalking 导出器配置
+  otlp:
+    endpoint: "skywalking-oap-server:11800"
+    tls:
+      insecure: true
+
+  # Exports data to the console
+  debug:
+
+
+service:
+  pipelines:
+    traces:
+      receivers: [ otlp ]
+      #processors: [ resourcedetection, memory_limiter, transform, batch ]
+      exporters: [ otlp,debug ]
+
+    metrics:
+      #receivers: [docker_stats, httpcheck/frontend-proxy, hostmetrics, nginx, otlp, postgresql, redis, spanmetrics]
+      receivers: [ otlp ]
+      #processors: [ resourcedetection, memory_limiter, batch ]
+      exporters: [ otlp,debug ]
